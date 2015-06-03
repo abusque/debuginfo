@@ -79,7 +79,7 @@ struct so_info *so_info_create(const char *path)
 	/* Position independent code has an e_type value of ET_DYN */
 	so->is_pic = so->ehdr->e_type == ET_DYN;
 
-	if(!so_info_compute_memsz(so)) {
+	if (!so_info_compute_memsz(so)) {
 		fprintf(stderr, "Error: unable to compute memsz for %s\n",
 			so->path);
 		goto err;
