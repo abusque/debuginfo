@@ -47,11 +47,37 @@ end:
 	return so->memsz;
 }
 
+static
+int set_dwarf_info(struct so_info *so)
+{
+	int ret;
+	Dwarf_Error error;
+
+	so->dwarf_info = malloc(sizeof(Dwarf_Debug));
+
+	ret = dwarf_init(so->fd, DW_DLC_READ, NULL, NULL, so->dwarf_info,
+			 &error);
+	if (ret != DW_DLV_OK) {
+		fprintf(stderr, "Failed do initialize DWARF info for %s\n",
+			so->path);
+		goto err;
+	}
+
+	return 0;
+
+err:
+	free(so->dwarf_info);
+	return -1;
+}
+
 struct so_info *so_info_create(const char *path)
 {
 	struct so_info *so = malloc(sizeof(struct so_info));
 
 	so->path = path;
+	/* Only set dwarf_info the first time it is read, to avoid
+	 * setting uselessly */
+	so->dwarf_info = NULL;
 
 	if ((so->fd = open(path, O_RDONLY)) < 0) {
 		fprintf(stderr, "Failed to open %s\n", path);
@@ -85,6 +111,13 @@ struct so_info *so_info_create(const char *path)
 		goto err;
 	}
 
+	so->low_addr = 0;	/* TODO: set from a baddr argument */
+	so->high_addr = so->low_addr + so->memsz;
+
+	/* Only here temporarily for testing, see above comment about
+	 * not setting on create */
+	set_dwarf_info(so);
+
 	return so;
 
 err:
@@ -102,6 +135,9 @@ err:
 
 void so_info_destroy(struct so_info *so)
 {
+	if (so->dwarf_info != NULL) {
+		free(so->dwarf_info);
+	}
 	free(so->ehdr);
 	elf_end(so->elf_file);
 	close(so->fd);

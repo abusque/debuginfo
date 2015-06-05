@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-c -Wall -g
-LDFLAGS=-lelf -lm
+LDFLAGS=-lelf -lm -ldwarf
 SOURCES=main.c so_info.c
 OBJECTS=$(SOURCES:.c=.o)
 EXECUTABLE=debuginfo

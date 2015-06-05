@@ -3,15 +3,19 @@
 
 #include <stdint.h>
 #include <gelf.h>
+#include <libdwarf/libdwarf.h>
 
 struct so_info {
 	const char *path;
 	int fd;
-	void *elf_file; 	/* Of Elf type */
+	Elf *elf_file;
 	GElf_Ehdr *ehdr;
+	Dwarf_Debug *dwarf_info;
 	uint8_t is_pic : 1;	/* Denotes whether the executable is
 				 * position independent code or not */
-	uint64_t memsz;
+	uint64_t low_addr;	/* Base virtual memory address */
+	uint64_t high_addr;	/* Upper bound of exec address space */
+	uint64_t memsz;		/* Size of exec address space */
 };
 
 struct so_info *so_info_create(const char *path);
