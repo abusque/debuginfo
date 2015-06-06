@@ -21,4 +21,6 @@ struct so_info {
 struct so_info *so_info_create(const char *path);
 void so_info_destroy(struct so_info *so);
 
+const char *get_function_name(struct so_info *so, uint64_t addr);
+
 #endif	/* SO_INFO_H */

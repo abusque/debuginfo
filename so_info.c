@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <libdwarf/dwarf.h> 	/* Used for DWARF constants
+				 * definitions, such as DW_TAG_* */
+#include "durin.h"
 #include "so_info.h"
 
 /*
@@ -133,10 +136,52 @@ err:
 void so_info_destroy(struct so_info *so)
 {
 	if (so->dwarf_info != NULL) {
+		dwarf_finish(*so->dwarf_info, NULL);
 		free(so->dwarf_info);
 	}
 	free(so->ehdr);
 	elf_end(so->elf_file);
 	close(so->fd);
 	free(so);
+}
+
+const char *get_function_name(struct so_info *so, uint64_t addr)
+{
+	const char *func_name = NULL;
+	struct durin_cu *cu;
+
+	/* Set DWARF info if it hasn't been accessed yet */
+	if (so->dwarf_info == NULL) {
+		if (so_info_set_dwarf_info(so)) {
+			/* Failed to set DWARF info */
+			return NULL;
+		}
+	}
+
+	/* Addresses in DWARF are relative to base address for PIC, so make
+	 * the address argument relative too if needed */
+	if (so->is_pic) {
+		addr -= so->low_addr;
+	}
+
+	for (cu = durin_cu_begin(so->dwarf_info); cu != NULL;
+	cu = durin_cu_next(cu)) {
+		struct durin_die *die;
+		for (die = durin_die_begin(cu); die != NULL;
+		die = durin_die_next(die)) {
+			if (durin_die_get_tag(die) == DW_TAG_subprogram) {
+				if (durin_die_contains_addr(die, addr)) {
+					func_name = durin_die_get_name(die);
+					break;
+				}
+			}
+		}
+
+		if (func_name != NULL) {
+			/* Found the corresponding function, end iteration */
+			break;
+		}
+	}
+
+	return func_name;
 }

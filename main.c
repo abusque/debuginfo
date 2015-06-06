@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include "so_info.h"
 
+#define TEST_ADDR 0x401405
+
 static
 void usage()
 {
@@ -12,6 +14,7 @@ void usage()
 int main(int argc, char *argv[])
 {
 	struct so_info *so;
+	const char *func_name;
 
 	if (argc != 2) {
 		usage();
@@ -27,7 +30,9 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	printf("%s\n", so->path);
+	func_name = get_function_name(so, TEST_ADDR);
+	printf("%s - %s\n", so->path, func_name);
+
 	so_info_destroy(so);
 
 	return EXIT_SUCCESS;
