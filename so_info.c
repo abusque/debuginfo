@@ -8,26 +8,24 @@
 /*
  * Computes a shared object's in-memory size.
  *
- * Returns 0 if the computation failed, the memsz (a positive
- * integer) if succesful.
+ * Returns -1 if the computation failed, 0 if successful
  */
 static
-uint64_t so_info_compute_memsz(struct so_info *so)
+int so_info_compute_memsz(struct so_info *so)
 {
 	GElf_Phdr phdr;
 	size_t i, phdrnum;
 	so->memsz = 0;
 
-	if (elf_getphdrnum(so->elf_file, &phdrnum) != 0) {
-		goto end;
+	if (elf_getphdrnum(so->elf_file, &phdrnum)) {
+		goto err;
 	}
 
 	for (i = 0; i < phdrnum; ++i) {
 		double p_memsz, segment_size;
 
 		if (gelf_getphdr(so->elf_file, i, &phdr) != &phdr) {
-			so->memsz = 0;
-			goto end;
+			goto err;
 		}
 
 		/* Only PT_LOAD segments contribute to memsz. Skip the
@@ -43,8 +41,11 @@ uint64_t so_info_compute_memsz(struct so_info *so)
 		so->memsz += (int) segment_size;
 	}
 
-end:
-	return so->memsz;
+	return 0;
+
+err:
+	so->memsz = 0;
+	return -1;
 }
 
 static
@@ -105,7 +106,7 @@ struct so_info *so_info_create(const char *path)
 	/* Position independent code has an e_type value of ET_DYN */
 	so->is_pic = so->ehdr->e_type == ET_DYN;
 
-	if (!so_info_compute_memsz(so)) {
+	if (so_info_compute_memsz(so)) {
 		fprintf(stderr, "Error: unable to compute memsz for %s\n",
 			so->path);
 		goto err;
