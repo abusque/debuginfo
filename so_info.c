@@ -49,7 +49,7 @@ err:
 }
 
 static
-int set_dwarf_info(struct so_info *so)
+int so_info_set_dwarf_info(struct so_info *so)
 {
 	int ret;
 	Dwarf_Error error;
@@ -114,10 +114,6 @@ struct so_info *so_info_create(const char *path)
 
 	so->low_addr = 0;	/* TODO: set from a baddr argument */
 	so->high_addr = so->low_addr + so->memsz;
-
-	/* Only here temporarily for testing, see above comment about
-	 * not setting on create */
-	set_dwarf_info(so);
 
 	return so;
 
