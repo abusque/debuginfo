@@ -7,7 +7,9 @@
 
 /*
  * Durin is a wrapper over libdwarf providing a nicer, higher-level
- * interface, to access basic debug information.
+ * interface, to access basic debug information. Durin is also the
+ * eldest of the seven Fathers of the Dwarves created by the Vala Aulë
+ * in the lore of Tolkien's Middle-earth.
  */
 
 /*
