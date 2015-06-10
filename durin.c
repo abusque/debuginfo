@@ -1,49 +1,54 @@
 #include "durin.h"
 
 static
-Dwarf_Unsigned durin_cu_next_header(Dwarf_Debug *dwarf_info,
-				    Dwarf_Unsigned cu_header)
+int durin_cu_next_header(Dwarf_Debug *dwarf_info, Dwarf_Unsigned *cu_offset)
 {
-	int ret;
+	return dwarf_next_cu_header(
+		*dwarf_info, NULL, NULL, NULL, NULL, cu_offset, NULL);
+}
 
+static
+void durin_cu_reset_internal_state(Dwarf_Debug *dwarf_info)
+{
 	/*
-	 * XXX: so it turns out libdwarf does not in fact use the
-	 * value of the offset cu_header, but instead keeps a second
-	 * offset, stored internally within the opaque Dwarf_Debug
-	 * structure, from which it then computes the offset of the
-	 * next header and fetches it. Therefore, the only apparent
-	 * way to reset this offset is to instantiate a new
-	 * Dwarf_Debug structure, which makes reading from a random
+	 * XXX: So it turns out libdwarf keeps a the value of the last
+	 * reader CU header's offset, stored internally within the
+	 * opaque Dwarf_Debug structure, from which it then computes
+	 * the offset of the next header and fetches it. Therefore,
+	 * the only apparent way to reset this offset is to iterate
+	 * over all CUs until they wrap over, short of instantiating a
+	 * new Dwarf_Debug structure. This makes reading from a random
 	 * offset, which should be a trivial task, completely
-	 * impractical. Beware of odd behviours when iterating over
-	 * CUs multiple times.
+	 * impractical.
 	 */
-	ret = dwarf_next_cu_header(
-		*dwarf_info, NULL, NULL, NULL, NULL, &cu_header, NULL);
-
-	if (ret == DW_DLV_NO_ENTRY) {
-		/* Reached end of CUs */
-		return 0;
+	Dwarf_Unsigned cu_offset;
+	while(dwarf_next_cu_header(*dwarf_info, NULL, NULL, NULL, NULL,
+				   &cu_offset, NULL) != DW_DLV_NO_ENTRY) {
+		/* Do nothing, just iterate until the end of CUs to
+		 * reset the internal state. There is no other way,
+		 * unfortunately. */
 	}
-
-	return cu_header;
 }
 
 struct durin_cu *durin_cu_begin(Dwarf_Debug *dwarf_info)
 {
 	struct durin_cu *cu;
-	Dwarf_Unsigned cu_header = 0;
+	Dwarf_Unsigned cu_offset = 0;
 
-	cu_header = durin_cu_next_header(dwarf_info, cu_header);
-	if (cu_header == 0) {
-		return NULL;
+	durin_cu_reset_internal_state(dwarf_info);
+	if (durin_cu_next_header(dwarf_info, &cu_offset)) {
+		/* Failed to fetch beginning CU */
+		goto err;
 	}
 
 	cu = malloc(sizeof(struct durin_cu));
 	cu->dwarf_info = dwarf_info;
-	cu->header = cu_header;
+	cu->offset = cu_offset;
 
 	return cu;
+
+err:
+	return NULL;
 }
 
 void durin_cu_destroy(struct durin_cu *cu)
@@ -53,14 +58,14 @@ void durin_cu_destroy(struct durin_cu *cu)
 
 struct durin_cu *durin_cu_next(struct durin_cu *cu)
 {
-	Dwarf_Unsigned cu_header;
+	Dwarf_Unsigned cu_offset;
 
-	cu_header = durin_cu_next_header(cu->dwarf_info, cu->header);
-	if (cu_header == 0) {
+	if (durin_cu_next_header(cu->dwarf_info, &cu_offset)) {
+		/* Failed to fetch beginning CU */
 		goto err;
 	}
 
-	cu->header = cu_header;
+	cu->offset = cu_offset;
 
 	return cu;
 

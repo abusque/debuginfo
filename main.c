@@ -32,6 +32,8 @@ int main(int argc, char *argv[])
 
 	func_name = get_function_name(so, TEST_ADDR);
 	printf("%s - %s\n", so->path, func_name);
+	func_name = get_function_name(so, TEST_ADDR);
+	printf("%s - %s\n", so->path, func_name);
 
 	so_info_destroy(so);
 

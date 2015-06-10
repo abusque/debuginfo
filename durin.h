@@ -18,7 +18,9 @@
  */
 struct durin_cu {
 	Dwarf_Debug *dwarf_info;
-	Dwarf_Unsigned header;
+	/* Offset in bytes within the DWARF
+	 * file to beginning of CU header */
+	Dwarf_Unsigned offset;
 };
 
 /*
