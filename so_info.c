@@ -172,6 +172,7 @@ const char *get_function_name(struct so_info *so, uint64_t addr)
 			if (durin_die_get_tag(die) == DW_TAG_subprogram) {
 				if (durin_die_contains_addr(die, addr)) {
 					func_name = durin_die_get_name(die);
+					durin_die_destroy(die);
 					break;
 				}
 			}
@@ -179,6 +180,7 @@ const char *get_function_name(struct so_info *so, uint64_t addr)
 
 		if (func_name != NULL) {
 			/* Found the corresponding function, end iteration */
+			durin_cu_destroy(cu);
 			break;
 		}
 	}
