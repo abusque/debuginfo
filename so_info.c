@@ -255,6 +255,11 @@ struct source_location *get_source_location(struct so_info *so, uint64_t addr)
 					&error);
 				dwarf_lineno(prev_line, &src_loc->line_no,
 					&error);
+
+				durin_die_destroy(die);
+				durin_cu_destroy(cu);
+
+				goto end;
 			}
 
 			prev_line = cur_line;
