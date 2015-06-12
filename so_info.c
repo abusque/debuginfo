@@ -225,7 +225,7 @@ struct source_location *get_source_location(struct so_info *so, uint64_t addr)
 
 		ret = dwarf_srclines(*die->dwarf_die, &line_buf, &line_count,
 				&error);
-		if(ret) {
+		if (ret) {
 			durin_die_destroy(die);
 			durin_cu_destroy(cu);
 			goto end;

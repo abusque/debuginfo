@@ -22,7 +22,7 @@ void durin_cu_reset_internal_state(Dwarf_Debug *dwarf_info)
 	 * impractical.
 	 */
 	Dwarf_Unsigned cu_offset;
-	while(dwarf_next_cu_header(*dwarf_info, NULL, NULL, NULL, NULL,
+	while (dwarf_next_cu_header(*dwarf_info, NULL, NULL, NULL, NULL,
 				   &cu_offset, NULL) != DW_DLV_NO_ENTRY) {
 		/* Do nothing, just iterate until the end of CUs to
 		 * reset the internal state. There is no other way,
