@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 
 	func_name = get_function_name(so, TEST_ADDR);
 	src_loc = get_source_location(so, TEST_ADDR);
-	printf("executable: %s file: %s function: %s\n line: %llu",
+	printf("executable: %s - file: %s - function: %s - line: %llu\n",
 	so->path, src_loc->filename, func_name, src_loc->line_no);
 
 	so_info_destroy(so);
