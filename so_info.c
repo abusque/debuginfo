@@ -147,7 +147,6 @@ void so_info_destroy(struct so_info *so)
 
 void source_location_destroy(struct source_location *src_loc)
 {
-	free(src_loc->filename);
 	free(src_loc);
 }
 
