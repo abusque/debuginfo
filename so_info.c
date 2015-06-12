@@ -145,6 +145,12 @@ void so_info_destroy(struct so_info *so)
 	free(so);
 }
 
+void source_location_destroy(struct source_location *src_loc)
+{
+	free(src_loc->filename);
+	free(src_loc);
+}
+
 const char *get_function_name(struct so_info *so, uint64_t addr)
 {
 	const char *func_name = NULL;
@@ -186,4 +192,78 @@ const char *get_function_name(struct so_info *so, uint64_t addr)
 	}
 
 	return func_name;
+}
+
+struct source_location *get_source_location(struct so_info *so, uint64_t addr)
+{
+	struct source_location *src_loc = NULL;
+	struct durin_cu *cu;
+
+	/* Set DWARF info if it hasn't been accessed yet */
+	if (so->dwarf_info == NULL) {
+		if (so_info_set_dwarf_info(so)) {
+			/* Failed to set DWARF info */
+			return NULL;
+		}
+	}
+
+	/* Addresses in DWARF are relative to base address for PIC, so make
+	 * the address argument relative too if needed */
+	if (so->is_pic) {
+		addr -= so->low_addr;
+	}
+
+	for (cu = durin_cu_begin(so->dwarf_info); cu != NULL;
+	cu = durin_cu_next(cu)) {
+		struct durin_die *die = durin_die_begin(cu);
+
+		int i, ret;
+		Dwarf_Line *line_buf = NULL;
+		Dwarf_Line prev_line = NULL;
+		Dwarf_Signed line_count = 0;
+		Dwarf_Error error;
+
+		ret = dwarf_srclines(*die->dwarf_die, &line_buf, &line_count,
+				&error);
+		if(ret) {
+			durin_die_destroy(die);
+			durin_cu_destroy(cu);
+			goto end;
+		}
+
+		for (i = 0; i < line_count; ++i) {
+			Dwarf_Line cur_line = line_buf[i];
+			Dwarf_Addr low_pc, high_pc, tmp_pc;
+
+			if (prev_line == NULL) {
+				prev_line = cur_line;
+				continue;
+			}
+
+			dwarf_lineaddr(prev_line, &low_pc, &error);
+			dwarf_lineaddr(cur_line, &high_pc, &error);
+
+			if (low_pc > high_pc) {
+				tmp_pc = low_pc;
+				low_pc = high_pc;
+				high_pc = tmp_pc;
+			}
+
+			if (low_pc <= addr && addr <= high_pc) {
+				src_loc = malloc(
+					sizeof(struct source_location));
+				dwarf_linesrc(prev_line, &src_loc->filename,
+					&error);
+				dwarf_lineno(prev_line, &src_loc->line_no,
+					&error);
+			}
+
+			prev_line = cur_line;
+		}
+
+		durin_die_destroy(die);
+	}
+
+end:
+	return src_loc;
 }
