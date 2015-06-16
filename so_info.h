@@ -28,7 +28,8 @@ void so_info_destroy(struct so_info *so);
 
 void source_location_destroy(struct source_location *src_loc);
 
-const char *get_function_name(struct so_info *so, uint64_t addr);
-struct source_location *get_source_location(struct so_info *so, uint64_t addr);
+const char *so_info_lookup_function_name(struct so_info *so, uint64_t addr);
+struct source_location *so_info_lookup_source_location(struct so_info *so,
+						uint64_t addr);
 
 #endif	/* SO_INFO_H */

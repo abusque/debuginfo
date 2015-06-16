@@ -150,7 +150,7 @@ void source_location_destroy(struct source_location *src_loc)
 	free(src_loc);
 }
 
-const char *get_function_name(struct so_info *so, uint64_t addr)
+const char *so_info_lookup_function_name(struct so_info *so, uint64_t addr)
 {
 	const char *func_name = NULL;
 	struct durin_cu *cu;
@@ -193,7 +193,8 @@ const char *get_function_name(struct so_info *so, uint64_t addr)
 	return func_name;
 }
 
-struct source_location *get_source_location(struct so_info *so, uint64_t addr)
+struct source_location *so_info_lookup_source_location(struct so_info *so,
+						uint64_t addr)
 {
 	struct source_location *src_loc = NULL;
 	struct durin_cu *cu;
