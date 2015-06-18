@@ -4,7 +4,7 @@
 #include <glib.h>
 #include "so_info.h"
 
-#define TEST_ADDR 0x401405
+#define TEST_ADDR 0x401505
 
 /*
  * For testing purposes only. Remove when implementing so_info_cache
@@ -154,8 +154,12 @@ int main(int argc, char *argv[])
 
 		func_name = get_function_name(addr);
 		src_loc = get_source_location(addr);
-		printf("executable: %s - file: %s - function: %s - line: %llu\n",
-		so->path, src_loc->filename, func_name, src_loc->line_no);
+		printf("executable: %s - function: %s", so->path, func_name);
+		if (src_loc != NULL) {
+			printf(" - file: %s - line: %llu",
+			       src_loc->filename, src_loc->line_no);
+		}
+		printf("\n");
 	}
 
 	for (i = 0; i < 2; ++i) {
@@ -165,8 +169,12 @@ int main(int argc, char *argv[])
 
 		func_name = get_function_name(addr);
 		src_loc = get_source_location(addr);
-		printf("executable: %s - file: %s - function: %s - line: %llu\n",
-		so->path, src_loc->filename, func_name, src_loc->line_no);
+		printf("executable: %s - function: %s", so->path, func_name);
+		if (src_loc != NULL) {
+			printf(" - file: %s - line: %llu",
+			       src_loc->filename, src_loc->line_no);
+		}
+		printf("\n");
 	}
 
 	teardown();
