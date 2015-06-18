@@ -173,7 +173,7 @@ int durin_die_contains_addr(struct durin_die *die, uint64_t addr)
 		high_pc += low_pc;
 	}
 
-	return low_pc <= addr && addr <= high_pc;
+	return low_pc <= addr && addr < high_pc;
 
 err:
 	return 0;
