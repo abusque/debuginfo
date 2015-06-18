@@ -13,6 +13,9 @@ struct so_info {
 	Dwarf_Debug *dwarf_info;
 	uint8_t is_pic : 1;	/* Denotes whether the executable is
 				 * position independent code or not */
+	uint8_t is_elf_only : 1; /* Denotes whether the SO only has
+				  * ELF symbols, and not DWARF info,
+				  * available for lookup */
 	uint64_t low_addr;	/* Base virtual memory address */
 	uint64_t high_addr;	/* Upper bound of exec address space */
 	uint64_t memsz;		/* Size of exec address space */

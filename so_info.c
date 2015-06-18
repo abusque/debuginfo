@@ -2,11 +2,17 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <libdwarf/dwarf.h> 	/* Used for DWARF constants
 				 * definitions, such as DW_TAG_* */
 #include "durin.h"
 #include "so_info.h"
+
+/* The an adress printed in hex is at most 19 characters (16 for
+ 64-bits + leading 0x + optional leading '+' if addr is an offset +
+ null character) */
+#define ADDR_STR_LEN 20
 
 /*
  * Computes a shared object's in-memory size.
@@ -67,10 +73,20 @@ int so_info_set_dwarf_info(struct so_info *so)
 		goto err;
 	}
 
+	/* Check if the dwarf info has any CU. If not, the SO's object
+	 * file contains no DWARF info */
+	if (durin_cu_begin(so->dwarf_info) == NULL) {
+		/* TODO: try to find separate debug info using
+		 * build-id and debuglink methods before failing */
+		goto err;
+	}
+
 	return 0;
 
 err:
+	dwarf_finish(*so->dwarf_info, NULL);
 	free(so->dwarf_info);
+	so->dwarf_info = NULL;
 	return -1;
 }
 
@@ -82,6 +98,7 @@ struct so_info *so_info_create(const char *path)
 	/* Only set dwarf_info the first time it is read, to avoid
 	 * setting uselessly */
 	so->dwarf_info = NULL;
+	so->is_elf_only = 0;
 
 	if ((so->fd = open(path, O_RDONLY)) < 0) {
 		fprintf(stderr, "Failed to open %s\n", path);
@@ -150,18 +167,82 @@ void source_location_destroy(struct source_location *src_loc)
 	free(src_loc);
 }
 
-const char *so_info_lookup_function_name(struct so_info *so, uint64_t addr)
+static
+const char *so_info_lookup_elf_function_name(struct so_info *so, uint64_t addr)
+{
+	/* TODO: add flag to so_info indicating whether the ELF file
+	 * is stripped, and behave accordingly */
+	char *func_name = NULL, *sym_name = NULL;
+	char offset_str[ADDR_STR_LEN];
+	Elf_Scn *scn = NULL;
+	GElf_Shdr nearest_shdr;
+	GElf_Sym nearest_sym;
+	int nearest_sym_set = 0;
+	uint64_t offset;
+
+	while ((scn = elf_nextscn(so->elf_file, scn)) != NULL) {
+		Elf_Data *data;
+		GElf_Shdr shdr;
+		int i, symbol_count;
+
+		gelf_getshdr(scn, &shdr);
+		if (shdr.sh_type != SHT_SYMTAB) {
+			/* We are only interested in symbol table
+			 * (symtab) sections, skip the rest */
+			continue;
+		}
+
+		data = elf_getdata(scn, NULL);
+		symbol_count = shdr.sh_size / shdr.sh_entsize;
+
+		for (i = 0; i < symbol_count; ++i) {
+			GElf_Sym cur_sym;
+			gelf_getsym(data, i, &cur_sym);
+			if (GELF_ST_TYPE(cur_sym.st_info) != STT_FUNC) {
+				/* We're only interested in the functions */
+				continue;
+			}
+
+			if (!nearest_sym_set) {
+				if (cur_sym.st_value <= addr) {
+					nearest_sym = cur_sym;
+					nearest_sym_set = 1;
+				}
+				continue;
+			}
+
+			if (cur_sym.st_value <= addr &&
+			cur_sym.st_value > nearest_sym.st_value) {
+				nearest_shdr = shdr;
+				nearest_sym = cur_sym;
+			}
+		}
+	}
+
+	if (!nearest_sym_set) {
+		/* No associated function found */
+		goto end;
+	}
+
+	sym_name = elf_strptr(so->elf_file, nearest_shdr.sh_link,
+			nearest_sym.st_name);
+	offset = addr - nearest_sym.st_value;
+	snprintf(offset_str, ADDR_STR_LEN, "+%#018lx", offset);
+
+	func_name = malloc(strlen(sym_name) + strlen(offset_str) + 1);
+	strcpy(func_name, sym_name);
+	strcat(func_name, offset_str);
+
+end:
+	return func_name;
+}
+
+static
+const char *so_info_lookup_dwarf_function_name(struct so_info *so,
+					uint64_t addr)
 {
 	const char *func_name = NULL;
 	struct durin_cu *cu;
-
-	/* Set DWARF info if it hasn't been accessed yet */
-	if (so->dwarf_info == NULL) {
-		if (so_info_set_dwarf_info(so)) {
-			/* Failed to set DWARF info */
-			return NULL;
-		}
-	}
 
 	/* Addresses in DWARF are relative to base address for PIC, so make
 	 * the address argument relative too if needed */
@@ -193,6 +274,27 @@ const char *so_info_lookup_function_name(struct so_info *so, uint64_t addr)
 	return func_name;
 }
 
+const char *so_info_lookup_function_name(struct so_info *so, uint64_t addr)
+{
+	const char *func_name = NULL;
+
+	/* Set DWARF info if it hasn't been accessed yet */
+	if (so->dwarf_info == NULL && !so->is_elf_only) {
+		if (so_info_set_dwarf_info(so)) {
+			/* Failed to set DWARF info */
+			so->is_elf_only = 1;
+		}
+	}
+
+	if (so->is_elf_only) {
+		func_name = so_info_lookup_elf_function_name(so, addr);
+	} else {
+		func_name = so_info_lookup_dwarf_function_name(so, addr);
+	}
+
+	return func_name;
+}
+
 struct source_location *so_info_lookup_source_location(struct so_info *so,
 						uint64_t addr)
 {
@@ -200,11 +302,16 @@ struct source_location *so_info_lookup_source_location(struct so_info *so,
 	struct durin_cu *cu;
 
 	/* Set DWARF info if it hasn't been accessed yet */
-	if (so->dwarf_info == NULL) {
+	if (so->dwarf_info == NULL && !so->is_elf_only) {
 		if (so_info_set_dwarf_info(so)) {
 			/* Failed to set DWARF info */
-			return NULL;
+			so->is_elf_only = 1;
 		}
+	}
+
+	if (so->is_elf_only) {
+		/* We cannot lookup source location without DWARF info */
+		return NULL;
 	}
 
 	/* Addresses in DWARF are relative to base address for PIC, so make
