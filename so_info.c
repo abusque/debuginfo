@@ -9,9 +9,11 @@
 #include "durin.h"
 #include "so_info.h"
 
-/* The an adress printed in hex is at most 19 characters (16 for
- 64-bits + leading 0x + optional leading '+' if addr is an offset +
- null character) */
+/*
+ * The an adress printed in hex is at most 19 characters (16 for
+ * 64-bits + leading 0x + optional leading '+' if addr is an offset +
+ * null character)
+ */
 #define ADDR_STR_LEN 20
 
 /*
@@ -244,12 +246,6 @@ const char *so_info_lookup_dwarf_function_name(struct so_info *so,
 	const char *func_name = NULL;
 	struct durin_cu *cu;
 
-	/* Addresses in DWARF are relative to base address for PIC, so make
-	 * the address argument relative too if needed */
-	if (so->is_pic) {
-		addr -= so->low_addr;
-	}
-
 	for (cu = durin_cu_begin(so->dwarf_info); cu != NULL;
 	cu = durin_cu_next(cu)) {
 		struct durin_die *die;
@@ -286,6 +282,12 @@ const char *so_info_lookup_function_name(struct so_info *so, uint64_t addr)
 		}
 	}
 
+	/* Addresses in ELF and DWARF are relative to base address for
+	 * PIC, so make the address argument relative too if needed */
+	if (so->is_pic) {
+		addr -= so->low_addr;
+	}
+
 	if (so->is_elf_only) {
 		func_name = so_info_lookup_elf_function_name(so, addr);
 	} else {
@@ -314,8 +316,8 @@ struct source_location *so_info_lookup_source_location(struct so_info *so,
 		return NULL;
 	}
 
-	/* Addresses in DWARF are relative to base address for PIC, so make
-	 * the address argument relative too if needed */
+	/* Addresses in ELF and DWARF are relative to base address for
+	 * PIC, so make the address argument relative too if needed */
 	if (so->is_pic) {
 		addr -= so->low_addr;
 	}
