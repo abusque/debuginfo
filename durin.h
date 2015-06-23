@@ -1,5 +1,5 @@
-#ifndef DURIN_H
-#define DURIN_H
+#ifndef _DURIN_H
+#define _DURIN_H
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -49,4 +49,4 @@ Dwarf_Half durin_die_get_tag(struct durin_die *die);
 char *durin_die_get_name(struct durin_die *die);
 int durin_die_contains_addr(struct durin_die *die, uint64_t addr);
 
-#endif	/* DURIN_H */
+#endif	/* _DURIN_H */

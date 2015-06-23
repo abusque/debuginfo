@@ -1,5 +1,5 @@
-#ifndef SO_INFO_H
-#define SO_INFO_H
+#ifndef _SO_INFO_H
+#define _SO_INFO_H
 
 #include <stdint.h>
 #include <gelf.h>
@@ -35,4 +35,4 @@ const char *so_info_lookup_function_name(struct so_info *so, uint64_t addr);
 struct source_location *so_info_lookup_source_location(struct so_info *so,
 						uint64_t addr);
 
-#endif	/* SO_INFO_H */
+#endif	/* _SO_INFO_H */
