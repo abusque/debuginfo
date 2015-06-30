@@ -33,7 +33,7 @@ int so_info_compute_memsz(struct so_info *so)
 	}
 
 	for (i = 0; i < phdrnum; ++i) {
-		double p_memsz, segment_size;
+		uint64_t align;
 
 		if (gelf_getphdr(so->elf_file, i, &phdr) != &phdr) {
 			goto err;
@@ -46,10 +46,10 @@ int so_info_compute_memsz(struct so_info *so)
 		}
 
 		/* Take into account the segment alignment when
-		 * computing its memory size */
-		p_memsz = (double) phdr.p_memsz;
-		segment_size = ceil(p_memsz / phdr.p_align) * phdr.p_align;
-		so->memsz += (int) segment_size;
+		 * computing its memory size. Alignment of 0 actually
+		 * means no alignment, i.e. aligned to 1 byte */
+		align = phdr.p_align != 0 ? phdr.p_align : 1;
+		so->memsz += (phdr.p_memsz + align - 1) & ~(align - 1);
 	}
 
 	return 0;
